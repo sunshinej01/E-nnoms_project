@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "multi_page",
+			"path": "../../../Downloads/multi_page"
+		},
+		{
+			"name": "02. 실습",
+			"path": "."
+		},
+		{
+			"name": "page_tab",
+			"path": "../../../Downloads/page_tab"
+		}
+	],
+	"settings": {}
+}
