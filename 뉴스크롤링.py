@@ -37,6 +37,21 @@ def scrape_articles(page_no, next_value):
             article_list.append((page_no, title, link))
     return article_list
 
+def fetch_article_body(link):
+    # 기사 본문 가져오기
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+    }
+    response = requests.get(link, headers=headers)
+
+    if response.status_code != 200:
+        print(f"본문 요청 실패: {response.status_code} | 링크: {link}")
+        return "본문을 가져올 수 없습니다."
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    body = soup.find('article')  # 본문이 포함된 영역 선택 (네이버 뉴스 기준)
+    return body.get_text(strip=True) if body else "본문을 가져올 수 없습니다."
+
 # 초기값 설정
 next_value = "20250111185615"  # 초기 next 값
 all_articles = []
@@ -61,3 +76,5 @@ for page_no in range(1, 6):  # 1~5 페이지 크롤링
 for idx, (page, title, link) in enumerate(all_articles, start=1):
     print(f"[{idx}] (페이지 {page}) 제목: {title}")
     print(f"    링크: {link}")
+    body = fetch_article_body(link)
+    print(f"    본문: {body}\n")
