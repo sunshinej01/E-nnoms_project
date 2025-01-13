@@ -3,14 +3,14 @@ from bs4 import BeautifulSoup
 import requests
 import datetime
 
-def scrape_articles(next_value):
+def scrape_articles_for_field(sid, next_value):
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Referer": "https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=100"
     }
 
     # URL 구성
-    url = f"https://news.naver.com/section/template/SECTION_ARTICLE_LIST?sid=100&sid2=&cluid=&pageNo=1&date=&next={next_value}&_=1736665778225"
+    url = f"https://news.naver.com/section/template/SECTION_ARTICLE_LIST?sid={sid}&sid2=&cluid=&pageNo=1&date=&next={next_value}&_=1736665778225"
 
     # 요청 보내기
     response = requests.get(url, headers=headers)
@@ -56,45 +56,49 @@ def fetch_article_body(link):
     body = soup.find('article')  # 본문이 포함된 영역 선택 (네이버 뉴스 기준)
     return body.get_text(strip=True) if body else "본문을 가져올 수 없습니다."
 
-# 현재 날짜를 'yyyymmdd' 형식으로 받아오기
-today = datetime.datetime.today().strftime('%Y%m%d')
+def crawl_articles(sid, max_articles=100):
+    # 현재 날짜를 'yyyymmdd' 형식으로 받아오기
+    today = datetime.datetime.today().strftime('%Y%m%d')
 
-# 예시 next_value 생성 (시간을 포함)
-time_suffix = datetime.datetime.today().strftime('%H%M%S')
-next_value = f"{today}{time_suffix}"
+    # 예시 next_value 생성 (시간을 포함)
+    time_suffix = datetime.datetime.today().strftime('%H%M%S')
+    next_value = f"{today}{time_suffix}"
 
-print(f"초기 next_value: {next_value}")
+    print(f"초기 next_value: {next_value}")
 
-# 초기값 설정
-all_articles = []
-seen_links = set()  # 중복 방지를 위한 링크 저장소
-article_count = 0  # 크롤링한 기사 수
+    # 초기값 설정
+    all_articles = []
+    seen_links = set()  # 중복 방지를 위한 링크 저장소
+    article_count = 0  # 크롤링한 기사 수
 
-# 페이지 크롤링
-while article_count < 100:  # 100개 기사를 크롤링
-    print(f"크롤링 중: next_value = {next_value}")
-    articles = scrape_articles(next_value)
-    if articles:
-        for article in articles:
-            if article[1] not in seen_links:  # 링크가 새로 추가된 경우
-                seen_links.add(article[1])
-                all_articles.append(article)
-                article_count += 1
+    # 페이지 크롤링
+    while article_count < max_articles:  # 최대 기사 수만큼 크롤링
+        print(f"크롤링 중: next_value = {next_value}")
+        articles = scrape_articles_for_field(sid, next_value)
+        if articles:
+            for article in articles:
+                if article[1] not in seen_links:  # 링크가 새로 추가된 경우
+                    seen_links.add(article[1])
+                    all_articles.append(article)
+                    article_count += 1
 
-                if article_count >= 100:
-                    print("100개의 기사 크롤링 완료!")
-                    break
+                    if article_count >= max_articles:
+                        print(f"{max_articles}개의 기사 크롤링 완료!")
+                        break
 
-        # next_value 업데이트 (동적 로직 필요)
-        next_value = str(int(next_value) - 10000)  # 예: 감소하는 방식
-    else:
-        print("더 이상 기사 없음.")
-        break
+            # next_value 업데이트 (동적 로직 필요)
+            next_value = str(int(next_value) - 10000)  # 예: 감소하는 방식
+        else:
+            print("더 이상 기사 없음.")
+            break
 
-# 결과 출력
-for idx, (title, link, date) in enumerate(all_articles, start=1):
-    print(f"[{idx}] 제목: {title}")
-    print(f"    링크: {link}")
-    print(f"    시간: {date}")
-    body = fetch_article_body(link)
-    print(f"    본문: {body}\n")
+    # 결과 출력
+    for idx, (title, link, date) in enumerate(all_articles, start=1):
+        print(f"[{idx}] 제목: {title}")
+        print(f"    링크: {link}")
+        print(f"    시간: {date}")
+        body = fetch_article_body(link)
+        print(f"    본문: {body}\n")
+
+# 사용 예시: 경제 분야(경제: sid=101)에서 100개 기사 크롤링
+crawl_articles(sid=101, max_articles=100)
