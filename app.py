@@ -1,19 +1,38 @@
+import os
 import streamlit as st
-import pandas as pd
+from importlib import import_module
+from streamlit_navigation_bar import st_navbar
 
-st.title('dashboard')
+# 페이지별 모듈 매핑
+pages = {
+    "Home": "home",
+    "뉴스 트렌드": "news_trend",
+    "시장 지표": "data_table",
+}
 
-st.write('대시보드입니다!')
+# 세션 상태 초기화
+if "page" not in st.session_state:
+    st.session_state.page = "Home"  # 초기 페이지 설정
 
-# 탭 생성
-tab_titles = ['네이버 뉴스 크롤링 및 토픽 모델링', '수치형 데이터 시각화']
-tabs = st.tabs(tab_titles)
+# GNB 스타일 설정
+styles = {
+    "nav": {
+        "background-color": "white",
+    },
+    "span": {  # GNB 텍스트 스타일
+        "color": "black",  # 검정색으로 변경
+        "font-weight": "bold",  # 굵게 표시 (선택 사항)
+    },
+    "active": {  # 활성화된 탭 스타일
+        "text-decoration": "underline",  # 밑줄 추가
+    },
+}
 
-# 데이터 전처리 탭에 콘텐츠 추가
-with tabs[0]:
-    st.header('1. 네이버 뉴스 크롤링 및 토픽 모델링')
-    st.write('데이터 전처리를 수핼할 수 있는 곳입니다.')
+# GNB 생성
+page = st_navbar(list(pages.keys()), styles=styles)  
 
-with tabs[1]:
-    st.header('2. 수치형 데이터 시각화')
-    st.write('모델 훈련을 수핼할 수 있는 곳입니다.')
+# 선택된 페이지에 따라 내용 표시
+if page in pages:  # 선택된 페이지가 pages 딕셔너리에 있는지 확인
+    current_page = pages[page]  # 딕셔너리에서 모듈 이름 가져오기
+    module = import_module(current_page)  # 모듈 import
+    module.render_page()  # render_page 함수 실행 (각 페이지 모듈에 정의)
