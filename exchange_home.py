@@ -38,7 +38,7 @@ def get_final_exchange_rates(currency_list, names, pg_num):
 
     # merge_dataframes로 최종 DataFrame 생성
     final_exchange_df = merge_dataframes(*dataframes)
-    return final_exchange_df  # 최종 DataFrame 반환
+    return final_exchange_df[::-1]  # 최종 DataFrame 반환
 
 def get_individual_rates(currency, pg_num):
     # currency_list에서 선택한 한 가지 항목에 대해 환율 데이터를 수집
@@ -46,20 +46,12 @@ def get_individual_rates(currency, pg_num):
     df = collect_exchange_rates(currency, pg_num, name)
     return df  # 개별 DataFrame 반환
 
-# 사용 예시
-pg_num = 3
-names = [
-    '미국 USD', '유럽연합 EUR', '일본 JPY (100엔)'
-]
-currency_list = [
-    "USD", "EUR", "JPY"
-]
+def add_rate_changes(df):
+    # 'USD'의 변동률을 계산하여 새로운 열 추가
+    df['USD 등락'] = df['USD'].astype(float).diff().fillna(0)
+    df['EUR 등락'] = df['EUR'].astype(float).diff().fillna(0)
+    df['JPY 등락'] = df['JPY'].astype(float).diff().fillna(0)
 
-# 최종 환율 DataFrame을 가져오기
-final_exchange_df = get_final_exchange_rates(currency_list, names, pg_num)
+    df[['USD 등락', 'EUR 등락', 'JPY 등락']] = df[['USD 등락', 'EUR 등락', 'JPY 등락']].fillna('-')
 
-# 개별 환율 데이터 가져오기 예시
-individual_currency = "USD"
-individual_pg_num = 2
-individual_rates_df = get_individual_rates(individual_currency, individual_pg_num)
 
