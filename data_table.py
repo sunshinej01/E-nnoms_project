@@ -1,7 +1,61 @@
 import pandas as pd
 import plotly.graph_objs as go
-import exchange_home as ex
 import streamlit as st
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+
+def merge_dataframes(*dataframes):
+    # 모든 DataFrame을 병합하여 하나의 DataFrame으로 반환
+    return pd.concat(dataframes, axis=1)
+
+def collect_exchange_rates(tab, pg_num):
+    rates = {}
+    for pg in range(pg_num):  # 기본 페이지에서는 지정된 수만큼 데이터를 크롤링
+        # url 설정
+        url = f"https://finance.naver.com/marketindex/exchangeDailyQuote.naver?marketindexCd=FX_{tab}KRW&page={pg+1}"
+
+        # response get
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # 날짜별 환율 크롤링
+        date_rows = soup.select('tbody tr')
+        
+        for row in date_rows:
+            date = row.select_one('td.date').text.strip()
+            num = row.select_one('td.num').text.strip().replace(',', '')
+            rates[date] = num
+
+    # DataFrame 생성
+    df = pd.DataFrame(list(rates.items()), columns=['date', tab])
+    df.set_index('date', inplace=True)
+    
+    return df  # DataFrame을 반환
+
+def get_final_exchange_rates(currency_list, pg_num):
+    dataframes = []
+    for tab in currency_list:
+        df = collect_exchange_rates(tab, pg_num)
+        dataframes.append(df)
+
+    # merge_dataframes로 최종 DataFrame 생성
+    final_exchange_df = merge_dataframes(*dataframes)
+    return final_exchange_df[::-1]  # 최종 DataFrame 반환
+
+def get_individual_rates(currency, pg_num):
+    # currency_list에서 선택한 한 가지 항목에 대해 환율 데이터를 수집
+    name = currency  # 통화 이름을 currency로 설정
+    df = collect_exchange_rates(currency, pg_num)
+    return df  # 개별 DataFrame 반환
+
+def add_rate_changes(df):
+    # 'USD'의 변동률을 계산하여 새로운 열 추가
+    df['USD 등락'] = df['USD'].astype(float).diff().fillna(0)
+    df['EUR 등락'] = df['EUR'].astype(float).diff().fillna(0)
+    df['JPY 등락'] = df['JPY'].astype(float).diff().fillna(0)
+
+    df[['USD 등락', 'EUR 등락', 'JPY 등락']] = df[['USD 등락', 'EUR 등락', 'JPY 등락']].fillna('-')
 
 def render_page():
     # Streamlit 애플리케이션 제목
@@ -17,13 +71,13 @@ def render_page():
     pg_num = 3
 
     # 최종 환율 DataFrame 가져오기
-    final_exchange_df = ex.get_final_exchange_rates(currency_list, pg_num)
+    final_exchange_df = get_final_exchange_rates(currency_list, pg_num)
 
     # 데이터프레임을 수치형으로 변환
     final_exchange_df = final_exchange_df.apply(pd.to_numeric, errors='coerce')
 
     # 변동률 열 추가
-    ex.add_rate_changes(final_exchange_df)
+    add_rate_changes(final_exchange_df)
 
     # 데이터 순서 거꾸로 바꾸기
     final_exchange_df = final_exchange_df[::-1]
@@ -72,7 +126,7 @@ def render_page():
                 else:
                     st.session_state.show_graph = False  # 그래프 숨기기
                 
-                st.experimental_rerun()  # 세션 리셋
+                st.rerun()  # 세션 리셋
 
     # 데이터프레임 준비
     final_exchange_df = prepare_data_table(final_exchange_df)
@@ -132,13 +186,13 @@ def get_exchange_data():
     pg_num = 3
 
     # 최종 환율 DataFrame 가져오기
-    final_exchange_df = ex.get_final_exchange_rates(currency_list, pg_num)
+    final_exchange_df = get_final_exchange_rates(currency_list, pg_num)
 
     # 데이터프레임을 수치형으로 변환
     final_exchange_df = final_exchange_df.apply(pd.to_numeric, errors='coerce')
 
     # 변동률 열 추가
-    ex.add_rate_changes(final_exchange_df)
+    add_rate_changes(final_exchange_df)
 
     # 데이터 순서 거꾸로 바꾸기
     final_exchange_df = final_exchange_df[::-1]
@@ -160,7 +214,7 @@ def create_exchange_figure(final_exchange_df, currency_list):
     fig.update_layout(title="환율 변화",
                       xaxis_title="날짜",
                       yaxis_title="환율",
-                      yaxis=dict(range=[final_exchange_df.min().min() - 1, final_exchange_df.max().max() + 1]),
+                      yaxis=dict(range=[800,1800]),#[final_exchange_df.min().min() - 1, final_exchange_df.max().max() + 1]),
                       xaxis=dict(tickformat="%Y-%m-%d"))  # x축 날짜 형식 설정
 
     return fig
