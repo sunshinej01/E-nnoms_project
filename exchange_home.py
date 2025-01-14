@@ -30,10 +30,10 @@ def collect_exchange_rates(tab, pg_num, name):
     
     return df  # DataFrame을 반환
 
-def get_final_exchange_rates(currency_list, names, pg_num):
+def get_final_exchange_rates(currency_list, pg_num):
     dataframes = []
-    for tab, name in zip(currency_list, names):
-        df = collect_exchange_rates(tab, pg_num, name)
+    for tab in currency_list:
+        df = collect_exchange_rates(tab, pg_num)
         dataframes.append(df)
 
     # merge_dataframes로 최종 DataFrame 생성

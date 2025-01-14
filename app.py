@@ -7,7 +7,7 @@ from streamlit_navigation_bar import st_navbar
 pages = {
     "Home": "home",
     "뉴스 트렌드": "news_trend",
-    "시장 지표": "data_table",
+    "시장 지표": "data_table",  # exchange.py와 매핑
 }
 
 # 세션 상태 초기화
@@ -35,4 +35,6 @@ page = st_navbar(list(pages.keys()), styles=styles)
 if page in pages:  # 선택된 페이지가 pages 딕셔너리에 있는지 확인
     current_page = pages[page]  # 딕셔너리에서 모듈 이름 가져오기
     module = import_module(current_page)  # 모듈 import
-    module.render_page()  # render_page 함수 실행 (각 페이지 모듈에 정의)
+    
+    # render_page 함수 실행 (각 페이지 모듈에 정의)
+    module.render_page()  # 모든 페이지 모듈에서 render_page 호출
