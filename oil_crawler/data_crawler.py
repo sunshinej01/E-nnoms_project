@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 def crawl_data(base_url, start_date):
     results = []
-    page = 1
+    page = 2
 
     while True:
         params = {"page": page}

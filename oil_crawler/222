@@ -1,0 +1,138 @@
+import streamlit as st
+import pandas as pd
+import plotly.graph_objs as go
+from datetime import datetime, timedelta
+from data_crawler import crawl_data
+
+# URL 설정
+urls = {
+    "휘발유": "https://finance.naver.com/marketindex/oilDailyQuote.naver?marketindexCd=OIL_GSL",
+    "고급 휘발유": "https://finance.naver.com/marketindex/oilDailyQuote.naver?marketindexCd=OIL_HGSL",
+    "경유": "https://finance.naver.com/marketindex/oilDailyQuote.naver?marketindexCd=OIL_LO"
+}
+
+# Streamlit 레이아웃
+st.title("유가 지표 비교")
+time_range = st.radio("기간 선택", options = ["1주일", "3개월", "6개월"], index=0)
+st.write('<style>div.row-widget.stRadio > div{flex-direction:row;}</style>', unsafe_allow_html=True)
+
+# 기준 날짜 계산
+today = datetime.now()
+if time_range == "1주일":
+    start_date = today - timedelta(weeks=1)
+elif time_range == "3개월":
+    start_date = today - timedelta(days=90)
+elif time_range == "6개월":
+    start_date = today - timedelta(days=180)
+
+# 데이터 크롤링
+all_data = {}
+for label, url in urls.items():
+    df = crawl_data(url, start_date)
+    df = df.sort_values("날짜")
+    all_data[label] = df
+
+# 데이터 시각화
+traces = []
+for label, df in all_data.items():
+    traces.append(go.Scatter(
+        x=df["날짜"],
+        y=df["종가"],
+        mode="lines",
+        name=label,
+        hoverinfo="x+y",
+        marker={"symbol": "circle", "size": 8}
+    ))
+
+fig = {
+    "data": traces,
+    "layout": go.Layout(
+        title="유가 지표 변화",
+        xaxis={"title": "날짜"},
+        yaxis={"title": "종가 (USD)"},
+        template="plotly_white",
+        hovermode="x"
+    )
+}
+
+st.plotly_chart(fig)
+
+
+
+
+
+
+
+
+
+import streamlit as st
+import pandas as pd
+import plotly.graph_objs as go
+from datetime import datetime, timedelta
+from data_crawler import crawl_data
+
+# URL 설정
+urls = {
+    "휘발유": "https://finance.naver.com/marketindex/oilDailyQuote.naver?marketindexCd=OIL_GSL",
+    "고급 휘발유": "https://finance.naver.com/marketindex/oilDailyQuote.naver?marketindexCd=OIL_HGSL",
+    "경유": "https://finance.naver.com/marketindex/oilDailyQuote.naver?marketindexCd=OIL_LO"
+}
+
+# 제목
+st.title("유가 지표 비교")
+
+# 기본 날짜 설정
+today = datetime.now()
+start_date = today - timedelta(weeks=1)  # 기본 1주일
+
+# 데이터 크롤링
+all_data = {}
+for label, url in urls.items():
+    df = crawl_data(url, start_date)
+    df = df.sort_values("날짜")
+    all_data[label] = df
+
+# 데이터 시각화
+traces = []
+for label, df in all_data.items():
+    traces.append(go.Scatter(
+        x=df["날짜"],
+        y=df["종가"],
+        mode="lines",
+        name=label,
+        hoverinfo="x+y",
+        marker={"symbol": "circle", "size": 8}
+    ))
+
+fig = {
+    "data": traces,
+    "layout": go.Layout(
+        title="유가 지표 변화",
+        xaxis={"title": "날짜"},
+        yaxis={"title": "종가 (USD)"},
+        template="plotly_white",
+        hovermode="x"  # 마우스가 있는 x축에서만 마커 표시
+    )
+}
+
+st.plotly_chart(fig)
+
+# 라디오 버튼 (그래프 아래, 중앙 정렬)
+st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+time_range = st.radio(
+    "기간 선택",
+    options=["1주일", "3개월", "6개월"],
+    index=1,  # 기본값: 1주일
+    horizontal=True  # 버튼 가로 정렬
+)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# 라디오 버튼에 따른 시작 날짜 재계산
+if time_range == "3개월":
+    start_date = today - timedelta(days=90)
+elif time_range == "6개월":
+    start_date = today - timedelta(days=180)
+elif time_range == "1주일":
+    start_date = today - timedelta(weeks=1)  # 기본값으로 돌아감
+
+
