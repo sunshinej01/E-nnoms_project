@@ -24,12 +24,22 @@ DEFAULT_TOP_N_KEYWORDS = 5
 def run_streamlit():
     st.title("뉴스 기사 분석")
 
+    # 스트림릿 session_state에 값이 있으면 해당 값들을 초기값으로 사용
+    if "selected_category" not in st.session_state:
+        st.session_state.selected_category = "정치"  # 기본 카테고리
+    if "max_articles" not in st.session_state:
+        st.session_state.max_articles = 50  # 기본 기사 개수
+
     # 한 줄에 카테고리 선택, 크롤링할 기사 수 입력, 분석 시작 버튼 배치
     col1, col2, col3 = st.columns([2, 3, 1])  # 각 컬럼의 크기를 조절
     with col1:
-        source = st.selectbox("", list(news_sources.keys()), key="category", label_visibility="collapsed")  # 라벨 없이 선택
+        source = st.selectbox("", list(news_sources.keys()), key="category", index=list(news_sources.keys()).index(st.session_state.selected_category), label_visibility="collapsed")  # 라벨 없이 선택
+        st.session_state.selected_category = source  # 선택된 카테고리 저장
+
     with col2:
-        max_articles = st.number_input("", min_value=1, value=50, key="num_articles", label_visibility="collapsed")  # 라벨 없이 입력
+        max_articles = st.number_input("", min_value=1, value=st.session_state.max_articles, key="num_articles", label_visibility="collapsed")  # 라벨 없이 입력
+        st.session_state.max_articles = max_articles  # 입력된 기사 수 저장
+
     with col3:
         analyze_button = st.button("분석 시작", use_container_width=True)  # 버튼 크기 조정
 
@@ -72,8 +82,8 @@ def run_streamlit():
                 related_articles = get_related_articles(word, articles, article_bodies, seen_articles)
                 st.write(f"## {word}")
                 if related_articles:
-                    for idx, (title, link, date) in enumerate(related_articles):
-                        st.write(f"{idx + 1}. {title} [{link}] - {date}")
+                    for title, link, date in related_articles:
+                        st.write(f"{title}\n[{link}] - {date}")
                 else:
                     st.write(f"  - 관련 기사가 없습니다.")
 
