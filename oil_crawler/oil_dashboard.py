@@ -11,8 +11,6 @@ urls = {
     "경유": "https://finance.naver.com/marketindex/oilDailyQuote.naver?marketindexCd=OIL_LO"
 }
 
-# 제목
-
 
 # 스타일을 적용하여 버튼을 하나의 행으로 배치하고 오른쪽 정렬
 st.markdown(
