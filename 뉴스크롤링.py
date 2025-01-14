@@ -5,13 +5,9 @@ from bs4 import BeautifulSoup
 from konlpy.tag import Okt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
-from collections import defaultdict
-import nltk
+from collections import defaultdict, Counter
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
-
-nltk.download('stopwords')
-nltk.download('punkt')
 
 # 뉴스 크롤링 함수
 def scrape_articles(sid, max_articles):
@@ -63,7 +59,14 @@ def scrape_articles(sid, max_articles):
 
         next_value = str(int(next_value) - 10000)
 
-    return all_articles
+    # 기사 본문도 함께 크롤링
+    all_article_bodies = []
+    for title, link, _ in all_articles:
+        body = fetch_article_body(link)
+        preprocessed_body = preprocess_text(body)
+        all_article_bodies.append(preprocessed_body)
+
+    return all_articles, all_article_bodies
 
 # 기사 본문 추출 함수
 def fetch_article_body(link):
@@ -82,7 +85,7 @@ def preprocess_text(text, custom_stop_words=None):
     okt = Okt()
     base_stop_words = {'은', '는', '이', '가', '을', '를', '에', '의', '와', '과', '도', '으로', '부터', '까지',
                        '더불어', '관련', '대한', '통해', '한다', '한다면', '한다는', '그리고', '또한', '있다', '이후',
-                       '라고'}
+                       '라고', '지난해', '가장', '대해', '이번', '대비', '오전', '개월'}
 
     if custom_stop_words:
         base_stop_words.update(custom_stop_words)
@@ -94,31 +97,8 @@ def preprocess_text(text, custom_stop_words=None):
 
     return ' '.join(filtered_words)
 
-# TF-IDF 분석 및 주요 단어 추출 함수
-def compute_tfidf(corpus, top_n=5, custom_stop_words=None):
-    vectorizer = TfidfVectorizer(stop_words=custom_stop_words)
-    tfidf_matrix = vectorizer.fit_transform(corpus)
-    feature_names = vectorizer.get_feature_names_out()
-
-    top_words_per_doc = []
-    for doc in tfidf_matrix:
-        sorted_indices = doc.toarray().flatten().argsort()[::-1]
-        top_words = [feature_names[idx] for idx in sorted_indices[:top_n]]
-        top_words_per_doc.append(top_words)
-
-    return top_words_per_doc, feature_names
-
-# 워드클라우드 생성 함수
-def create_wordcloud(words_freq):
-    # Windows에서 한글이 깨지지 않도록 '맑은 고딕' 폰트 경로를 설정합니다.
-    wordcloud = WordCloud(font_path="C:\\Windows\\Fonts\\malgun.ttf", width=800, height=400, background_color='white').generate_from_frequencies(words_freq)
-    plt.figure(figsize=(10, 5))
-    plt.imshow(wordcloud, interpolation="bilinear")
-    plt.axis('off')
-    plt.show()
-
-# 토픽 모델링 함수
-def topic_modeling(corpus, num_topics=5, top_n_per_topic=5):
+# LDA 토픽 모델링 함수
+def lda_topic_modeling(corpus, num_topics=5, top_n_per_topic=5):
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(corpus)
 
@@ -134,56 +114,70 @@ def topic_modeling(corpus, num_topics=5, top_n_per_topic=5):
 
     return topics
 
-# 전체 기사에서 LDA 토픽 단어 빈도수를 바탕으로 워드클라우드 생성
-def create_combined_wordcloud(topics, all_article_bodies):
-    word_freq = defaultdict(int)
-    # 전체 기사에서 각 토픽의 주요 단어 빈도를 계산
-    for article_body in all_article_bodies:
-        for topic_words in topics.values():
-            for word in topic_words:
-                if word in article_body:
-                    word_freq[word] += article_body.count(word)
+# 워드클라우드 생성 함수
+def create_wordcloud(word_freq):
+    wordcloud = WordCloud(font_path="C:\\Windows\\Fonts\\SeoulNamsanB.ttf", width=800, height=400, background_color='white', colormap='magma').generate_from_frequencies(word_freq)
+    plt.figure(figsize=(10, 5))
+    plt.imshow(wordcloud, interpolation="bilinear")
+    plt.axis('off')
+    plt.show()
 
-    # 전체 기사에서 나온 단어들로 워드클라우드 생성
-    print("전체 기사 워드클라우드 생성 중...")
-    create_wordcloud(word_freq)
+# 관련 기사 출력 함수 (상위 단어 출력만)
+def print_related_articles(word, articles, article_bodies, seen_articles, top_n=3):
+    related_articles = []
+
+    for i, (title, link, date) in enumerate(articles):
+        body = article_bodies[i]
+        
+        # 이미 출력한 기사는 제외
+        if body and word in body and link not in seen_articles:
+            related_articles.append((title, link, date))
+            seen_articles.add(link)
+
+        if len(related_articles) >= top_n:
+            break
+
+    if related_articles:
+        print(f"\n단어: {word}")
+        for idx, (title, link, date) in enumerate(related_articles):
+            print(f"  {idx + 1}. {title} ({link})")
+    else:
+        print(f"\n단어: {word}와 관련된 기사가 없습니다.")
 
 # 통합 실행 함수
-def main(sid, max_articles, top_n_words, num_topics, top_n_per_topic=5, custom_stop_words=None):
+def main(sid, max_articles, top_n_words, num_topics, top_n_per_topic=5, custom_stop_words=None, top_n_keywords=5):
     print("뉴스 크롤링 중...")
-    articles = scrape_articles(sid, max_articles)
+    articles, article_bodies = scrape_articles(sid, max_articles)
 
-    all_article_bodies = []
-    for title, link, _ in articles:
-        body = fetch_article_body(link)
-        preprocessed_body = preprocess_text(body, custom_stop_words)
-        all_article_bodies.append(preprocessed_body)
+    # LDA 토픽 모델링
+    print("\nLDA 토픽 모델링 중...")
+    topics = lda_topic_modeling(article_bodies, num_topics, top_n_per_topic)
 
-    print("TF-IDF 분석 중...")
-    top_words_per_doc, feature_names = compute_tfidf(all_article_bodies, top_n_words, custom_stop_words)
+    # 워드클라우드 생성 (토픽별 키워드로)
+    print("\n워드클라우드 생성 중...")
+    topic_words = [word for words in topics.values() for word in words]
+    topic_word_freq = Counter(topic_words)
 
-    # 토픽 모델링 수행
-    print("토픽 모델링 중...")
-    topics = topic_modeling([" ".join(top_words) for top_words in top_words_per_doc], num_topics, top_n_per_topic)
+    # 전체 기사에서 나온 빈도수를 기반으로 워드클라우드 생성
+    wordcloud_freq = Counter({word: topic_word_freq[word] for word in topic_word_freq})
+    create_wordcloud(wordcloud_freq)
 
-    # LDA 결과로 나온 토픽 단어들을 바탕으로 전체 기사 워드클라우드 생성
-    create_combined_wordcloud(topics, all_article_bodies)
+    # 상위 단어 출력
+    sorted_keywords = sorted(wordcloud_freq.items(), key=lambda x: x[1], reverse=True)[:top_n_keywords]
+    seen_articles = set()  # 이미 출력된 기사 추적
 
-    # 결과 출력
-    print("\n[토픽 모델링 결과]")
-    for topic_idx, top_words in topics.items():
-        print(f"토픽 {topic_idx + 1}: {', '.join(top_words)}")
-        for title, link, _ in articles:
-            if any(word in " ".join(top_words) for word in top_words):
-                print(f"    - {title} ({link})")
+    print("\n[상위 단어와 연관 기사]")
+    for word, freq in sorted_keywords:
+        print_related_articles(word, articles, article_bodies, seen_articles)
 
 # 실행 예시
 if __name__ == "__main__":
     main(
-        sid=101,  # 경제 분야
-        max_articles=100,  # 최대 50개 기사
-        top_n_words=5,  # 문서당 주요 단어 5개
-        num_topics=5,  # 3개의 토픽 생성
+        sid=100,  # 정치 분야
+        max_articles=50,  # 최대 기사 수
+        top_n_words=5,  # 문서당 주요 단어 수
+        num_topics=5,  # 토픽 수
         top_n_per_topic=5,  # 각 토픽에서 추출할 단어 수
-        custom_stop_words=None  # 커스텀 불용어 비워둠
+        custom_stop_words=None,  # 커스텀 불용어 (필요시 추가)
+        top_n_keywords=5  # 출력할 상위 키워드 수
     )
