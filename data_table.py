@@ -99,34 +99,24 @@ def render_page():
     st.subheader("환율 데이터")
 
     # 버튼을 한 줄에 나란히 배치
-    cols = st.columns(7)  # 버튼 배치용 열 생성
+    cols = st.columns(10)  # 버튼 배치용 열 생성
 
     # 첫 번째 열에 타이틀 추가
-    with cols[0]:
-        st.markdown("<h7 style='text-align: center;'><span style='font-weight: normal;'>통화를</span><br><span style='font-weight: normal;'>선택하세요</span></h7>", unsafe_allow_html=True)
+    #with cols[0]:
+    #    st.markdown("<h7 style='text-align: center;'><span style='font-weight: normal;'>통화를</span><br><span style='font-weight: normal;'>선택하세요</span></h7>", unsafe_allow_html=True)
 
     # 버튼 클릭 카운트 초기화
     if 'button_count' not in st.session_state:
         st.session_state.button_count = {name: 0 for name in currency_list}  # 각 통화 버튼의 카운트 초기화
 
     for i, name in enumerate(currency_list):
-        with cols[2*i+1]:  # 각 열에 버튼 배치
+        with cols[7+i]:  # 각 열에 버튼 배치
             if st.button(name, key=name):  # 각 버튼에 고유한 키를 부여
                 # 카운트 초기화 및 증가
-                for n in currency_list:
-                    if n == name:
-                        st.session_state.button_count[n] += 1  # 클릭한 버튼의 카운트 증가
-                    else:
-                        st.session_state.button_count[n] = 0  # 다른 버튼의 카운트 초기화
-
-                # 그래프 표시 여부 설정
-                if st.session_state.button_count[name] % 2 == 1:
-                    st.session_state.selected_currency = name  # 선택한 통화 저장
-                    st.session_state.show_graph = True  # 그래프 표시
-                else:
-                    st.session_state.show_graph = False  # 그래프 숨기기
+                st.session_state.selected_currency = name  # 선택한 통화 저장
+                st.session_state.show_graph = True  # 그래프 표시
                 
-                st.rerun()  # 세션 리셋
+                #st.rerun()  # 세션 리셋
 
     # 데이터프레임 준비
     final_exchange_df = prepare_data_table(final_exchange_df)
@@ -239,3 +229,5 @@ def colorize_dataframe(df):
         )
     
     return html.to_html(escape=False, index=False, justify='center')
+
+#render_page()
