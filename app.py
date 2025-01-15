@@ -33,8 +33,8 @@ page = st_navbar(list(pages.keys()), styles=styles)
 
 # 선택된 페이지에 따라 내용 표시
 if page == "Home":
-    st.title("Home")
-    st.write("홈 페이지입니다.")
+    home_module = import_module("home")
+    home_module.render_page()
 elif page == "News trend":
     # news.py의 run_streamlit() 호출
     news_module = import_module("news")
