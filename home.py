@@ -56,24 +56,24 @@ def render_page():
     )
     
     # 시계
-    st_autorefresh(interval=1000, limit=None)  # 1000ms = 1초마다 리프레시
-    clock_placeholder = st.empty() 
+    # st_autorefresh(interval=1000, limit=None)  # 1000ms = 1초마다 리프레시
+    # clock_placeholder = st.empty() 
     
-    # 현재 시간 가져오기
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    st.markdown(
-        f"""
-        <div style="
-            text-align: center; 
-            font-size: 2rem; 
-            font-weight: bold; 
-            margin-top: 20px;
-        ">
-            {current_time}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # # 현재 시간 가져오기
+    # current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # st.markdown(
+    #     f"""
+    #     <div style="
+    #         text-align: center; 
+    #         font-size: 2rem; 
+    #         font-weight: bold; 
+    #         margin-top: 20px;
+    #     ">
+    #         {current_time}
+    #     </div>
+    #     """,
+    #     unsafe_allow_html=True,
+    # )
  
     # 본문 가운데 정렬 및 들여쓰기
     st.markdown(
