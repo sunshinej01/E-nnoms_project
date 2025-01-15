@@ -40,5 +40,5 @@ elif page == "News trend":
     news_module = import_module("news")
     news_module.render_page()
 elif page == "Market Data":
-    st.title("Market Data")
-    st.write("마켓 데이터를 준비 중입니다.")
+    data_module = import_module("data_table")
+    data_module.render_page()
