@@ -80,7 +80,7 @@ def render_page():
         """
         <hr style="border: 1px solid #ddd; margin: 20px 0;">
         <div class="centered-text", style="text-align: left;">
-            <p><b2><h2 style= "font-weight: 900; margin-bottom: 10px;"> Project Name</b2></p>
+            <p><b2><h2 style= "font-weight: 900; margin-bottom: 10px;"> Assignment</b2></p>
             <p>네이버 뉴스와 시장지표를 활용한 대시보드 제작 프로젝트</p>
             <br>
             <br>
