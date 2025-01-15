@@ -5,7 +5,7 @@ from collections import Counter
 from wordcloud_generation import create_wordcloud, get_related_articles
 import platform
 
-# 뉴스 소스 ID와 이름 매핑 (IT/과학까지만 표시)
+# 뉴스 소스 ID와 이름 매핑
 news_sources = {
     "정치": 100,
     "경제": 101,
@@ -31,82 +31,101 @@ def get_font_path():
     else:  # Linux or others
         return "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
+# 워드클라우드 생성 및 데이터 저장
+def display_wordcloud(category, num_articles):
+    sid = news_sources[category]
+    articles, article_bodies = scrape_articles(sid, num_articles)
+
+    topics = lda_topic_modeling(article_bodies, num_topics=DEFAULT_NUM_TOPICS, top_n_per_topic=DEFAULT_TOP_N_PER_TOPIC)
+    topic_words = [word for words in topics.values() for word in words]
+    topic_word_freq = Counter(topic_words)
+
+    wordcloud_freq = Counter({word: topic_word_freq[word] for word in topic_word_freq})
+    wordcloud_img = create_wordcloud(wordcloud_freq)
+
+    # 상태에 데이터 저장
+    st.session_state.wordcloud_data = {
+        "category": category,
+        "num_articles": num_articles,
+        "image": wordcloud_img,
+        "topics": topics,
+        "articles": articles,
+        "article_bodies": article_bodies,
+        "word_freq": wordcloud_freq
+    }
+
+# 관련 기사 표시
+def display_related_articles():
+    data = st.session_state.get("wordcloud_data")
+    if data is None:
+        return
+
+    sorted_keywords = sorted(data["word_freq"].items(), key=lambda x: x[1], reverse=True)[:DEFAULT_TOP_N_KEYWORDS]
+    seen_articles = set()
+
+    for word, _ in sorted_keywords:
+        related_articles = get_related_articles(word, data["articles"], data["article_bodies"], seen_articles)
+        st.write(f"## {word}")
+        if related_articles:
+            for title, link, date in related_articles:
+                st.write(f"- [{title}]({link}) ({date})")
+        else:
+            st.write("- 관련 기사가 없습니다.")
+
 # 페이지 렌더링 처리
 def render_page():
-    st.title("뉴스 기사 분석")
+    # 기본값 설정
+    if "category" not in st.session_state:
+        st.session_state["category"] = "정치"  # 기본값은 정치
+    if "num_articles" not in st.session_state:
+        st.session_state["num_articles"] = 30  # 기본값은 30
 
-    # 한 줄에 카테고리 선택, 크롤링할 기사 수 입력, 분석 시작 버튼 배치
-    col1, col2, col3 = st.columns([2, 3, 1])  # 각 컬럼의 크기를 조절
+    # 카테고리와 기사 수 선택
+    col1, col2, col3 = st.columns([2, 3, 1])
     with col1:
-        source = st.selectbox("", list(news_sources.keys()), key="category", label_visibility="collapsed")  # 라벨 없이 선택
+        category_input = st.selectbox(
+            "",  # 라벨 비활성화
+            list(news_sources.keys()),
+            index=list(news_sources.keys()).index(st.session_state["category"]),
+            key="category_input",  # 키 변경
+            label_visibility="collapsed"
+        )
     with col2:
-        max_articles = st.number_input("", min_value=1, value=50, key="num_articles", label_visibility="collapsed")  # 라벨 없이 입력
+        num_articles_input = st.number_input(
+            "",  # 라벨 비활성화
+            min_value=1,
+            value=st.session_state["num_articles"],
+            key="num_articles_input",  # 키 변경
+            label_visibility="collapsed"
+        )
     with col3:
-        analyze_button = st.button("분석 시작", use_container_width=True)  # 버튼 크기 조정
+        analyze_button = st.button("분석 시작", use_container_width=True)
 
-    # 각 요소의 높이를 맞추기 위해 동일한 높이로 설정
-    col1.write("")  # 첫 번째 컬럼에 내용이 없으면 높이를 맞추기 위해 공백 추가
-    col2.write("")  # 두 번째 컬럼에 내용이 없으면 높이를 맞추기 위해 공백 추가
-    col3.write("")  # 세 번째 컬럼에 내용이 없으면 높이를 맞추기 위해 공백 추가
-
-    # 분석 버튼 클릭 후 결과 영역을 분리하여 표시
-    if analyze_button:
-        # 초기 워드클라우드 생성이 진행 중이면 강제로 중단하고 분석을 바로 시작하도록 함
-        if "initialized" in st.session_state and st.session_state.initialized:
-            st.session_state.initialized = False  # 초기화 상태를 False로 설정하여 중단시킴
-
-        with st.spinner("분석 진행 중..."):
-            sid = news_sources[source]  # 선택된 카테고리의 ID
-            # 뉴스 크롤링
-            articles, article_bodies = scrape_articles(sid, max_articles)
-
-            # LDA 토픽 모델링
-            topics = lda_topic_modeling(article_bodies, num_topics=DEFAULT_NUM_TOPICS, top_n_per_topic=DEFAULT_TOP_N_PER_TOPIC)
-
-            # 토픽에서 단어 추출
-            topic_words = [word for words in topics.values() for word in words]
-            topic_word_freq = Counter(topic_words)
-
-            # 워드클라우드 생성
-            wordcloud_freq = Counter({word: topic_word_freq[word] for word in topic_word_freq})
-            wordcloud_img = create_wordcloud(wordcloud_freq)
-
-            # Streamlit에서 이미지를 표시
-            st.image(wordcloud_img, use_column_width=True)
-
-            # 상위 N개의 키워드 추출
-            sorted_keywords = sorted(wordcloud_freq.items(), key=lambda x: x[1], reverse=True)[:DEFAULT_TOP_N_KEYWORDS]
-
-            # 연관 기사 추출
-            seen_articles = set()
-            for word, _ in sorted_keywords:
-                related_articles = get_related_articles(word, articles, article_bodies, seen_articles)
-                st.write(f"## {word}")
-                if related_articles:
-                    for title, link, date in related_articles:
-                        # 제목과 링크, 날짜를 줄바꿈하여 출력
-                        st.write(f"{title}\n{link} - {date}")
-                else:
-                    st.write(f"  - 관련 기사가 없습니다.")
-
-    # 초기화 체크
+    # 초기값을 "정치"와 "30"으로 설정하여 첫 워드클라우드 생성
     if "initialized" not in st.session_state:
-        st.session_state.initialized = True  # 초기화 여부 체크
-
+        # 초기 워드클라우드 생성 및 표시
+        st.session_state.initialized = True
         with st.spinner("초기 워드클라우드 생성 중..."):
-            # 정치 카테고리의 50개 기사를 크롤링하여 워드클라우드를 생성
-            articles, article_bodies = scrape_articles(news_sources["정치"], 50)
+            display_wordcloud(st.session_state["category"], st.session_state["num_articles"])
 
-            # LDA 토픽 모델링
-            topics = lda_topic_modeling(article_bodies, num_topics=DEFAULT_NUM_TOPICS, top_n_per_topic=DEFAULT_TOP_N_PER_TOPIC)
-            topic_words = [word for words in topics.values() for word in words]
-            topic_word_freq = Counter(topic_words)
+    # 분석 버튼 클릭 시 새로운 워드클라우드 생성
+    if analyze_button:
+        # 분석 시작 버튼 클릭 시 세션 상태 값 업데이트
+        st.session_state["category"] = category_input
+        st.session_state["num_articles"] = num_articles_input
+        with st.spinner("분석 진행 중..."):
+            display_wordcloud(category_input, num_articles_input)
 
-            wordcloud_freq = Counter({word: topic_word_freq[word] for word in topic_word_freq})
+    # 기존 워드클라우드 표시
+    if "wordcloud_data" in st.session_state and st.session_state.wordcloud_data:
+        # 제목을 워드클라우드 바로 위에 표시
+        category = st.session_state.get("category")
+        num_articles = st.session_state.get("num_articles")
+        st.title(f"{category} 분야 뉴스 {num_articles}개 기사 분석")  # 제목 업데이트
+        st.image(st.session_state.wordcloud_data["image"], use_column_width=True)
 
-            # 워드클라우드 생성
-            wordcloud_img = create_wordcloud(wordcloud_freq)
-            st.image(wordcloud_img, use_column_width=True)
+        # 관련 기사 표시
+        display_related_articles()
 
 # 메인 실행
 if __name__ == "__main__":
