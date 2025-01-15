@@ -121,7 +121,6 @@ def render_page():
         st.image(st.session_state.wordcloud_data["image"], use_column_width=True)
 
         # 관련 기사 표시
-        st.write('제목을 클릭하면 기사로 연결됩니다')
         display_related_articles()
 
 # 메인 실행
