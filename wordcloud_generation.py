@@ -1,11 +1,32 @@
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+import platform
+import os
 import io
 import base64
 
-# 워드클라우드 이미지 생성 함수 (plt.show() 대신 이미지를 반환)
+# 환경에 맞는 폰트 경로를 자동으로 설정하는 함수
+def get_font_path():
+    system = platform.system()  # 운영 체제 판별
+    if system == "Windows":
+        return "C:\\Windows\\Fonts\\SeoulNamsanB.ttf"  # Windows에서 사용할 한글 폰트
+    elif system == "Darwin":  # macOS
+        # macOS에서 사용할 한글 폰트 (경로에 따라 다를 수 있음)
+        if os.path.exists("/Library/Fonts/AppleGothic.ttf"):
+            return "/Library/Fonts/AppleGothic.ttf"
+        elif os.path.exists("/System/Library/Fonts/AppleGothic.ttf"):
+            return "/System/Library/Fonts/AppleGothic.ttf"
+        else:
+            # NanumGothic이 있을 경우 사용 (별도의 설치가 필요할 수 있음)
+            return "/Library/Fonts/NanumGothic.ttf"  # 예시로 NanumGothic을 사용
+    else:  # Linux
+        # Linux에서 사용할 폰트 (NanumGothic)
+        return "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"  # 예시로 NanumGothic을 사용
+
+# 워드클라우드 이미지 생성 함수 (이미지 파일로 반환)
 def create_wordcloud(word_freq):
-    wordcloud = WordCloud(font_path="C:\\Windows\\Fonts\\SeoulNamsanB.ttf", width=800, height=400, background_color='white', colormap='magma').generate_from_frequencies(word_freq)
+    font_path = get_font_path()  # 환경에 맞는 폰트 경로 가져오기
+    wordcloud = WordCloud(font_path=font_path, width=800, height=400, background_color='white', colormap='magma').generate_from_frequencies(word_freq)
     
     # 이미지를 메모리 버퍼에 저장
     img = io.BytesIO()
